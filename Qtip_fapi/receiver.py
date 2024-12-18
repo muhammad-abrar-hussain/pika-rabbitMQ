@@ -16,7 +16,7 @@ def process_files(presentation_id, files):
 
 
     base_dir = os.path.dirname(os.path.abspath(__file__))
-    test_file_path = os.path.join(base_dir, "assets", "samplepptx.pptx")
+    test_file_path = os.path.join(base_dir, "assets", "sample2.pdf")
 
     extracted_texts = []
 
@@ -35,8 +35,8 @@ def process_files(presentation_id, files):
 
 
 
-
 def callback(ch, method, properties, body):
+
     presentation_id = body.decode()
     response = requests.get(f"{FASTAPI_ENDPOINT}/{presentation_id}")
 
