@@ -18,7 +18,7 @@ Qtip_app
 ├── RMQ_env
 ├── img.png
 └── README.md
-
+```
 
 Start application: uvicorn Qtip_fapi.main:app --reload --port 8000
 
@@ -43,7 +43,7 @@ database.py: Made connection with db in file.
 knowledgebase.py: Present get and post API's for start_learning_Queue
 
 Question.py: Present get and put API's for Question_Queue.
-```
+
 
 
 
