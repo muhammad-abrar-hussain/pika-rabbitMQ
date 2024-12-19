@@ -1,3 +1,26 @@
+"""
+RabbitMQ Consumer Module
+
+This script initializes RabbitMQ consumers for two queues: `start_learning_Queue` and `question_Queue`.
+It processes incoming messages from these queues and performs corresponding actions, such as extracting text from
+files or processing questions.
+
+Features:
+- Uses `pika` for RabbitMQ messaging.
+- Utilizes `ThreadPoolExecutor` for handling tasks asynchronously.
+- Implements multithreading to run multiple consumers in parallel.
+- Fetches data from FastAPI endpoints for further processing.
+- Handles graceful shutdown on keyboard interruption.
+
+Attributes:
+    RABBITMQ_HOST (str): The hostname for RabbitMQ.
+    START_LEARNING_QUEUE (str): Queue name for processing "start learning" tasks.
+    QUESTION_QUEUE (str): Queue name for processing "question" tasks.
+    GET_PRESENTATION_FILES (str): FastAPI endpoint to fetch presentation file paths.
+    GET_QUESTION_BODY (str): FastAPI endpoint to fetch question details.
+    executor (ThreadPoolExecutor): Thread pool executor for asynchronous task handling.
+"""
+
 import pika, sys, os, requests
 from concurrent.futures import ThreadPoolExecutor
 from textExtract import extract_text
@@ -16,8 +39,20 @@ executor = ThreadPoolExecutor(max_workers=5)
 
 def process_files(presentation_id, files):
     """
-        Processes the files for start_learning_Queue.
+    Processes files for the `start_learning_Queue` messages.
+
+    Args:
+        presentation_id (str): The ID of the presentation whose files are being processed.
+        files (list): List of file information dictionaries containing file paths.
+
+    Actions:
+        - Extracts text from the files provided in the `files` list.
+        - Prints extracted text for debugging.
+
+    Note:
+        Uses a test file path for demonstration purposes. Replace with actual file paths from `files`.
     """
+
     base_dir = os.path.dirname(os.path.abspath(__file__))
     test_file_path = os.path.join(base_dir, "assets", "test.pdf")
 
@@ -38,15 +73,33 @@ def process_files(presentation_id, files):
 
 def process_question(question_data):
     """
-    Processes the questions for question_Queue.
+    Processes questions for the `question_Queue` messages.
+
+    Args:
+        question_data (dict): A dictionary containing question details fetched from the API.
+
+    Actions:
+        - Prints received question data for debugging.
     """
     print(f"Received a new question: {question_data}")
 
 
 def start_learning_callback(ch, method, properties, body):
     """
-    Callback for start_learning_Queue.
-    """
+        RabbitMQ callback function for `start_learning_Queue`.
+
+        Args:
+            ch: The channel object.
+            method: The delivery method.
+            properties: Message properties.
+            body (bytes): Message body containing the presentation ID.
+
+        Actions:
+            - Fetches file paths for a given presentation ID via the FastAPI endpoint.
+            - Submits file processing tasks to the thread pool.
+            - Acknowledges message receipt.
+        """
+
     presentation_id = body.decode()
     response = requests.get(f"{GET_PRESENTATION_FILES}/{presentation_id}")
     if response.status_code == 200:
@@ -59,8 +112,20 @@ def start_learning_callback(ch, method, properties, body):
 
 def question_callback(ch, method, properties, body):
     """
-    Callback for question_Queue.
+    RabbitMQ callback function for `question_Queue`.
+
+    Args:
+        ch: The channel object.
+        method: The delivery method.
+        properties: Message properties.
+        body (bytes): Message body containing the question ID.
+
+    Actions:
+        - Fetches question details for a given question ID via the FastAPI endpoint.
+        - Submits question processing tasks to the thread pool.
+        - Acknowledges message receipt.
     """
+
     question_id = body.decode()
     response = requests.get(f"{GET_QUESTION_BODY}/{question_id}")
 
@@ -71,8 +136,14 @@ def question_callback(ch, method, properties, body):
 
 def start_learning_consumer():
     """
-    Consumer for start_learning_Queue.
+    Initializes the RabbitMQ consumer for `start_learning_Queue`.
+
+    Actions:
+        - Declares the `start_learning_Queue` queue.
+        - Consumes messages from the queue.
+        - Prints logs indicating consumer activity.
     """
+
     connection = pika.BlockingConnection(pika.ConnectionParameters(host=RABBITMQ_HOST))
     channel = connection.channel()
 
@@ -86,8 +157,14 @@ def start_learning_consumer():
 
 def question_consumer():
     """
-    Consumer for question_Queue.
+    Initializes the RabbitMQ consumer for `question_Queue`.
+
+    Actions:
+        - Declares the `question_Queue` queue.
+        - Consumes messages from the queue.
+        - Prints logs indicating consumer activity.
     """
+
     connection = pika.BlockingConnection(pika.ConnectionParameters(host=RABBITMQ_HOST))
     channel = connection.channel()
 
@@ -101,8 +178,14 @@ def question_consumer():
 
 def main():
     """
-    Main function to start both consumers.
+    Main function to start RabbitMQ consumers for both queues.
+
+    Actions:
+        - Launches the `start_learning_consumer` and `question_consumer` in separate threads.
+        - Ensures the main thread stays alive while consumers are running.
+        - Handles graceful shutdown on keyboard interruption.
     """
+
     # Run both consumers in separate threads
     learning_thread = Thread(target=start_learning_consumer)
     question_thread = Thread(target=question_consumer)
@@ -113,7 +196,6 @@ def main():
     # Keep the main thread alive
     learning_thread.join()
     question_thread.join()
-
 
 if __name__ == '__main__':
     try:

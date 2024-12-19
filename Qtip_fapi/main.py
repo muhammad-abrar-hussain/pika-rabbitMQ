@@ -1,7 +1,28 @@
-"""the file will start fastapi and initialize db and rabbitMQ consumer.
-
-shutdown db when local server close.
 """
+Main FastAPI application file for the QTip project.
+
+This file initializes the FastAPI app, sets up the database connection, and starts a RabbitMQ consumer.
+It also handles application startup and shutdown events, ensuring proper resource management.
+
+Modules and Features:
+- Includes FastAPI routers for handling specific API endpoints (knowledgebase and Question).
+- Connects to the database on application startup and disconnects on shutdown.
+- Starts the RabbitMQ consumer process for message handling.
+
+Attributes:
+    app (FastAPI): The FastAPI application instance.
+
+Endpoints:
+    - GET `/`: A root endpoint to test if the app is running, returning a welcome message.
+
+Event Handlers:
+    - `startup`: Establishes the database connection and starts the RabbitMQ consumer on application startup.
+    - `shutdown`: Closes the database connection when the server shuts down.
+
+Usage:
+    Run this file to start the FastAPI application and initialize required services (database and RabbitMQ).
+"""
+
 
 from fastapi import FastAPI
 from Qtip_fapi.database import database

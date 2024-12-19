@@ -1,3 +1,19 @@
+"""
+Text Extraction Module
+
+This module provides functions to extract text from various document formats, including PDF, PowerPoint, Word, and ODP (OpenDocument Presentation) files.
+
+Features:
+- Extract text from PDF files using `PyPDF2`.
+- Extract text from PowerPoint files using `python-pptx`.
+- Extract text from Word documents (DOCX) using `python-docx`.
+- Extract text from ODP files using `odf` libraries.
+- Generic function `extract_text` to handle different file types dynamically.
+
+Attributes:
+    SUPPORTED_EXTENSIONS (list): List of supported file extensions.
+"""
+
 import PyPDF2
 from pptx import Presentation
 from pathlib import Path
@@ -9,8 +25,21 @@ import os
 # from sklearn.feature_extraction.text import TfidfVectorizer
 
 
-# to handle pdf
 def extract_text_from_pdf(file_path):
+    """
+        Extracts text from a PDF file.
+
+        Args:
+            file_path (str): The path to the PDF file.
+
+        Returns:
+            str: The extracted text from the PDF file.
+
+        Notes:
+            - Uses `PyPDF2` to read PDF files.
+            - Handles errors gracefully and prints error messages.
+        """
+
     text = ""
     try:
         with open(file_path, 'rb') as file:
@@ -22,8 +51,21 @@ def extract_text_from_pdf(file_path):
     return text
 
 
-# to handle pptx
 def extract_text_from_pptx(file_path):
+    """
+        Extracts text from a PowerPoint (PPTX) file.
+
+        Args:
+            file_path (str): The path to the PowerPoint file.
+
+        Returns:
+            str: The extracted text from the PowerPoint file.
+
+        Notes:
+            - Uses `python-pptx` to extract text from slides and their shapes.
+            - Handles errors gracefully and prints error messages.
+        """
+
     text = ""
     try:
         presentation = Presentation(file_path)
@@ -38,14 +80,42 @@ def extract_text_from_pptx(file_path):
     return text
 
 
-# to handle doc/docx
 def extract_text_from_docx(file_path):
+    """
+        Extracts text from a Word document (DOCX).
+
+        Args:
+            file_path (str): The path to the Word document.
+
+        Returns:
+            str: The extracted text from the Word document, with each paragraph separated by a newline.
+
+        Notes:
+            - Uses the `python-docx` library to process DOCX files.
+            - Iterates through all paragraphs in the document and joins their text content with newline characters.
+            - Only extracts visible text content; metadata or embedded objects are not included.
+        """
+
     doc = Document(file_path)
     return "\n".join([paragraph.text for paragraph in doc.paragraphs])
 
 
-#to handle odp
 def extract_text_from_odp(file_path):
+    """
+        Extracts text from an OpenDocument Presentation (ODP) file.
+
+        Args:
+            file_path (str): The path to the ODP file.
+
+        Returns:
+            str: The extracted text from the ODP file.
+
+        Notes:
+            - Uses `odf.opendocument` to load ODP files.
+            - Extracts text content from paragraphs and spans.
+            - Handles errors gracefully and returns an error message if extraction fails.
+        """
+
     try:
         doc = load(file_path)
         text = []
@@ -67,10 +137,24 @@ def extract_text_from_odp(file_path):
         return f"Error reading ODP file: {e}"
 
 
-
-
-
 def extract_text(file_path):
+    """
+        Extracts text from a file based on its extension.
+
+        Args:
+            file_path (str): The path to the file.
+
+        Returns:
+            str: The extracted text from the file.
+
+        Raises:
+            ValueError: If the file type is unsupported.
+
+        Notes:
+            - Automatically determines the file type based on its extension.
+            - Supports DOCX, PDF, PPTX, and ODP formats.
+        """
+
     ext = os.path.splitext(file_path)[1].lower()
     if ext in ['.doc', '.docx']:
         return extract_text_from_docx(file_path)
