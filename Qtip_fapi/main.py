@@ -6,6 +6,7 @@ shutdown db when local server close.
 from fastapi import FastAPI
 from Qtip_fapi.database import database
 from Qtip_fapi.routers import knowledgebase
+from Qtip_fapi.routers import Question
 import asyncio
 import subprocess
 import os
@@ -13,6 +14,7 @@ import os
 app = FastAPI()
 
 app.include_router(knowledgebase.router)
+app.include_router(Question.router)
 
 
 @app.on_event("startup")

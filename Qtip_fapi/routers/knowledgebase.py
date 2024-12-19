@@ -11,7 +11,7 @@ async def get_files_by_presentation(presentation_id: str):
         query = """
         SELECT filepath 
         FROM QTip_Api_presentationknowledgebase 
-        WHERE presentation_id = :presentation_id
+        WHERE presentation_id = REPLACE(:presentation_id, '-', '')
         """
         rows = await database.fetch_all(query, {"presentation_id": presentation_id})
         if not rows:
@@ -36,11 +36,6 @@ class AiGeneratedTopicCreate(BaseModel):
 @router.post("/knowledgebase/ai-response")
 async def ai_response(topic: AiGeneratedTopicCreate):
     try:
-        # Insert query to add data into the database
-        # query = """
-        #     INSERT INTO QTip_Api_aigeneratedtopic(uuid, presenter_id, presentation_id, title, summary, open_ai_request_completion_id)
-        #     VALUES (UUID(), :presenter_id, :presentation_id, :title, :summary, :open_ai_request_completion_id)
-        #     """
         query = """
                     INSERT INTO QTip_Api_aigeneratedtopic 
                     (uuid, presenter_id, presentation_id, title, summary, open_ai_request_completion_id)
