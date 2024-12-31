@@ -1,70 +1,152 @@
-"""
-Database configuration for the QTip application.
-
-This module sets up the connection to the MySQL database using SQLAlchemy and Databases.
-
-Attributes:
-    DATABASE_URL (str): The connection string for the MySQL database.
-    database (Database): An asynchronous database connection instance from the Databases library.
-    engine (Engine): A SQLAlchemy engine for synchronous database operations.
-    metadata (MetaData): Metadata instance used for defining and reflecting database schemas.
-
-Usage:
-    - `database`: Used for asynchronous operations, such as querying or inserting data.
-    - `engine`: Used for synchronous database interactions or schema-related tasks.
-"""
-
-import sys
-import os
-
-# Add the 'packages' folder to the system path
-sys.path.append(os.path.join(os.path.dirname(__file__), 'packages'))
-
-from databases import Database
-from sqlalchemy import create_engine, MetaData
+from sqlalchemy import create_engine, MetaData, text
+from sqlalchemy.sql import text
 
 DATABASE_URL = "mysql+pymysql://root:123456@localhost:3306/qtip_schema"
 
-database = Database(DATABASE_URL)
+# Create a synchronous engine
 engine = create_engine(DATABASE_URL)
 metadata = MetaData()
 
 
-async def db_fetch_files(presentation_id):
-    query = """
-    SELECT filepath
-    FROM QTip_Api_presentationknowledgebase
-    WHERE presentation_id = REPLACE(:presentation_id, '-', '')
+def db_fetch_files(presentation_id):
     """
-    rows = await database.fetch_all(query,
-                                    {"presentation_id": presentation_id})
-    if not rows:
-        raise Exception("No files found for the given presentation ID.")
+    Fetch file paths associated with a specific presentation ID.
 
-    files = [dict(row) for row in rows]
-    return {"files": files}
+    Args:
+        presentation_id (str): The ID of the presentation to fetch files for.
 
-async def db_save_topics(topics, presentation_id):
+    Returns:
+        list: A list of file paths.
+
+    Raises:
+        Exception: If no files are found for the given presentation ID.
+    """
     try:
-        query = """
-                    INSERT INTO QTip_Api_aigeneratedtopic
-                    (uuid, presenter_id, presentation_id, title, summary, open_ai_request_completion_id)
-                    VALUES (
-                        REPLACE(UUID(), '-', ''),
-                        REPLACE(:presenter_id, '-', ''),
-                        REPLACE(:presentation_id, '-', ''),
-                        :title,
-                        :summary,
-                        :open_ai_request_completion_id
-                    )
-                """
-        values = {
-            "presenter_id": str(topic.presenter_id),
-            "presentation_id": str(topic.presentation_id),
-            "title": topic.title,
-            "summary": topic.summary,
-            "open_ai_request_completion_id": topic.open_ai_request_completion_id,
-        }
-        await database.execute(query=query, values=values)
+        with engine.connect() as conn:
+            query = text("""
+                SELECT filepath
+                FROM PresentationKnowledgeBase
+                WHERE presentation_id = :presentation_id
+            """)
 
-        return {"message": "AI-generated topic successfully created."}
+            # Execute the query and get the result as a mapping of column names to values
+            result = conn.execute(query, {"presentation_id": presentation_id}).mappings()
+            rows = result.all()
+
+            if not rows:
+                raise Exception("No files found for the given presentation ID.")
+
+            # Now you can access columns by their names, e.g., row["filepath"]
+            return [{"filepath": row["filepath"]} for row in rows]
+
+    except Exception as e:
+        return {"error": str(e)}
+
+
+def db_save_topics(topic, presentation_id):
+    """
+    Save AI-generated topics into the database.
+
+    Args:
+        topic (dict): Dictionary containing topic details (presenter_id, title, summary, open_ai_request_completion_id).
+        presentation_id (str): The ID of the presentation to associate with the topic.
+
+    Returns:
+        dict: Response message indicating success or error.
+    """
+    try:
+        with engine.connect() as conn:
+            query = text("""
+                INSERT INTO AiGeneratedTopic
+                (uuid, presenter_id, presentation_id, title, summary, open_ai_request_completion_id)
+                VALUES (
+                    REPLACE(UUID(), '-', ''),
+                    REPLACE(:presenter_id, '-', ''),
+                    REPLACE(:presentation_id, '-', ''),
+                    :title,
+                    :summary,
+                    :open_ai_request_completion_id
+                )
+            """)
+            conn.execute(query, {
+                "presenter_id": topic["presenter_id"],
+                "presentation_id": presentation_id,
+                "title": topic["title"],
+                "summary": topic["summary"],
+                "open_ai_request_completion_id": topic["open_ai_request_completion_id"],
+            })
+
+            return {"message": "AI-generated topic successfully created."}
+    except Exception as e:
+        return {"error": str(e)}
+
+
+
+def db_fetch_question(question_id: str):
+    """
+    Fetch a question from the database using its unique identifier (UUID).
+
+    Args:
+        question_id (str): The UUID of the question.
+
+    Returns:
+        dict: A dictionary containing the question if found.
+
+    Raises:
+        Exception: If no question is found or an error occurs.
+    """
+    try:
+        with engine.connect() as conn:
+            # Use the text() function to mark the query as executable
+            query = text("""
+            SELECT question
+            FROM PresentationOriginalQuestions
+            WHERE uuid = :uuid
+            """)
+            # Execute the query with parameters using the text() function
+            result = conn.execute(query, {"uuid": question_id}).fetchone()
+
+            if not result:
+                raise Exception("No Question found for the given Question ID.")
+            return {"question": result[0]}
+    except Exception as e:
+        raise Exception(f"Database error: {e}")
+
+
+
+def db_save_question_detail(topic: str, is_relevant: bool, question_id: str):
+    """
+    Update the `topic` and `is_relevant` fields of a question in the database.
+
+    Args:
+        topic (str): The AI-assigned topic for the question.
+        is_relevant (bool): Whether the question is deemed relevant by the AI.
+        question_id (str): The UUID of the question to update.
+
+    Returns:
+        dict: A success message if the update is successful.
+
+    Raises:
+        Exception: If an error occurs during the update.
+    """
+    try:
+        with engine.connect() as conn:
+            # Use the text() function to mark the query as executable
+            query = text("""
+            UPDATE PresentationOriginalQuestions
+            SET topic = :topic, is_relevant = :is_relevant
+            WHERE uuid = :question_id
+            """)
+
+            # Execute the query with parameters using the text() function
+            conn.execute(
+                query,
+                {
+                    "topic": topic,
+                    "is_relevant": int(is_relevant),
+                    "question_id": question_id,
+                },
+            )
+            return {"message": "AI Response successfully updated in the database"}
+    except Exception as e:
+        raise Exception(f"Database error: {e}")
