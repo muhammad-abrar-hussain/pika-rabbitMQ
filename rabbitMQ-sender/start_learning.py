@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 import pika
-presentation_id = "47ebc916-c793-11ef-bb91-b499e2a07b89"
+presentation_id = "1"
 connection = pika.BlockingConnection(
     pika.ConnectionParameters(host='localhost'))
 channel = connection.channel()
