@@ -30,10 +30,10 @@ def main():
             question = db_fetch_question(question_id)
             # question_detail = open_api_get_relevancy(files_content)
             question_detail = {
-                        "topic": "Artificial Intelligence Basics",
+                        "topic_id": "4",
                         "is_relevant": False
                         }
-            save_result = db_save_question_detail(question_detail["topic"],question_detail["is_relevant"], question_id)
+            save_result = db_save_question_detail(question_detail["topic_id"],question_detail["is_relevant"], question_id)
             print(save_result)
         except Exception as e:
             print(f"Error processing question {question_id}: {e}")

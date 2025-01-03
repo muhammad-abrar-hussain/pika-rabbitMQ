@@ -31,7 +31,6 @@ def prepare_content(files):
                 print(f"Error extracting text from {test_file_path}: {e}")
         else:
             print("File path not found in file info.")
-    print(extracted_texts)
     return "".join(extracted_texts)
 
 def main():
@@ -47,6 +46,7 @@ def main():
         print(f"Received {presentation_id}")
 
         files = db_fetch_files(presentation_id)
+        print(files,"===================================================================")
         if "error" in files:
             print(files["error"])
             return
@@ -55,8 +55,8 @@ def main():
 
         # topics = open_api_get_topics(files_content)
         topics = {
-                  "presenter_id": "4330565c-10b2-4b03-86fa-685775146b8f",
-                  "presentation_id": "a821102e-b2eb-4280-a99d-ac2f0b8a4d7b",
+                  "presenter_id": "1",
+                  "presentation_id": "1",
                   "title": "Introduction to Machine Learning",
                   "summary": "This topic covers the basics of machine learning, including supervised and unsupervised learning techniques.",
                   "open_ai_request_completion_id": "cmpl-7eWMTmLqeFr95"

@@ -1,7 +1,7 @@
 from sqlalchemy import create_engine, MetaData, text
 from sqlalchemy.sql import text
 
-DATABASE_URL = "mysql+pymysql://root:123456@localhost:3306/qtip_schema"
+DATABASE_URL = "mysql+pymysql://root:123456@localhost:3306/qtip"
 
 # Create a synchronous engine
 engine = create_engine(DATABASE_URL)
@@ -24,8 +24,8 @@ def db_fetch_files(presentation_id):
     try:
         with engine.connect() as conn:
             query = text("""
-                SELECT filepath
-                FROM PresentationKnowledgeBase
+                SELECT path
+                FROM knowledge_base
                 WHERE presentation_id = :presentation_id
             """)
 
@@ -37,7 +37,8 @@ def db_fetch_files(presentation_id):
                 raise Exception("No files found for the given presentation ID.")
 
             # Now you can access columns by their names, e.g., row["filepath"]
-            return [{"filepath": row["filepath"]} for row in rows]
+            print()
+            return [{"filepath": row["path"]} for row in rows]
 
     except Exception as e:
         return {"error": str(e)}
@@ -55,14 +56,13 @@ def db_save_topics(topic, presentation_id):
         dict: Response message indicating success or error.
     """
     try:
-        with engine.connect() as conn:
+        with engine.begin() as conn:
             query = text("""
-                INSERT INTO AiGeneratedTopic
-                (uuid, presenter_id, presentation_id, title, summary, open_ai_request_completion_id)
+                INSERT INTO ai_generated_topics
+                (id, presenter_id, presentation_id, title, summary, open_ai_request_completion_id)
                 VALUES (
-                    REPLACE(UUID(), '-', ''),
-                    REPLACE(:presenter_id, '-', ''),
-                    REPLACE(:presentation_id, '-', ''),
+                    :presenter_id,
+                    :presentation_id,
                     :title,
                     :summary,
                     :open_ai_request_completion_id
@@ -80,48 +80,46 @@ def db_save_topics(topic, presentation_id):
     except Exception as e:
         return {"error": str(e)}
 
-
-
-def db_fetch_question(question_id: str):
+def db_fetch_question(question_id: int):
     """
-    Fetch a question from the database using its unique identifier (UUID).
+    Fetch a question from the database using its unique identifier (ID).
 
     Args:
-        question_id (str): The UUID of the question.
+        question_id (int): The ID of the question (bigint unsigned).
 
     Returns:
-        dict: A dictionary containing the question if found.
+        dict: A dictionary containing the question details if found.
 
     Raises:
         Exception: If no question is found or an error occurs.
     """
     try:
         with engine.connect() as conn:
-            # Use the text() function to mark the query as executable
+            # Original query adjusted to use the integer ID
             query = text("""
-            SELECT question
-            FROM PresentationOriginalQuestions
-            WHERE uuid = :uuid
+            SELECT title
+            FROM original_questions
+            WHERE id = :id
             """)
-            # Execute the query with parameters using the text() function
-            result = conn.execute(query, {"uuid": question_id}).fetchone()
+            # Execute the query with parameters
+            result = conn.execute(query, {"id": question_id}).fetchone()
 
             if not result:
                 raise Exception("No Question found for the given Question ID.")
+
+            # Return the fetched question as a dictionary
             return {"question": result[0]}
     except Exception as e:
         raise Exception(f"Database error: {e}")
 
-
-
-def db_save_question_detail(topic: str, is_relevant: bool, question_id: str):
+def db_save_question_detail(topic_id: int, is_relevant: bool, question_id: int):
     """
-    Update the `topic` and `is_relevant` fields of a question in the database.
+    Update the `topic_id` and `is_relevant` fields of a question in the database.
 
     Args:
-        topic (str): The AI-assigned topic for the question.
+        topic_id (int): The AI-assigned topic ID for the question.
         is_relevant (bool): Whether the question is deemed relevant by the AI.
-        question_id (str): The UUID of the question to update.
+        question_id (int): The ID of the question to update.
 
     Returns:
         dict: A success message if the update is successful.
@@ -130,23 +128,27 @@ def db_save_question_detail(topic: str, is_relevant: bool, question_id: str):
         Exception: If an error occurs during the update.
     """
     try:
-        with engine.connect() as conn:
-            # Use the text() function to mark the query as executable
+        with engine.begin() as conn:  # Start a transaction and commit automatically
             query = text("""
-            UPDATE PresentationOriginalQuestions
-            SET topic = :topic, is_relevant = :is_relevant
-            WHERE uuid = :question_id
+                UPDATE original_questions
+                SET topic_id = :topic_id, is_relevant = :is_relevant, updated_at = NOW()
+                WHERE id = :id
             """)
 
-            # Execute the query with parameters using the text() function
-            conn.execute(
+            result = conn.execute(
                 query,
                 {
-                    "topic": topic,
+                    "topic_id": topic_id,
                     "is_relevant": int(is_relevant),
-                    "question_id": question_id,
+                    "id": question_id,
                 },
             )
+
+            # Check if a row was affected
+            if result.rowcount == 0:
+                raise Exception(f"No rows updated. Verify that question ID {question_id} exists.")
+
             return {"message": "AI Response successfully updated in the database"}
     except Exception as e:
         raise Exception(f"Database error: {e}")
+
