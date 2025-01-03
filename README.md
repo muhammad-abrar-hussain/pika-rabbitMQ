@@ -1,48 +1,46 @@
 ```bash
-Qtip_app
-├── Qtip_fapi
-│   ├── assets
-│   ├── routers
-│   │   ├── __init__.py
-│   │   ├── knowledgebase.py
-│   │   └── Question.py
-│   ├── __init__.py
-│   ├── database.py
-│   ├── main.py
-│   ├── receiver.py
-│   └── textExtract.py
-│
-├── rabbitMQ 
+qtip-python-api[app]
+├── rabbitMQ-sender(optional)
 │   ├── Question.py
 │   └── Start_learning.py
-├── RMQ_env
-├── img.png
-└── README.md
+├── RMQ_Consumers
+│   ├── assets
+│   ├── packages
+│   ├── __init__.py
+│   ├── database.py
+│   ├── extractFileText.py
+│   ├── openai_api.py
+│   ├── Quesion_Queue.py
+│   └── Start_learning_queue.py
+├── RMQ_venv
+├── project_flow.png
+├── README.md
+└── requirements.txt
 ```
 
-Start application: uvicorn Qtip_fapi.main:app --reload --port 8000
+
 
 
 **About Folders:**
 
-rabbitMQ: Present queue initializers & add message into Queue as sender.
+rabbitMQ-sender: Present queue initializers & add message into Queue as sender.
 
-RMQ_env: Present virtual environment setup
+RMQ_Consumers: Present, packages, db, openapi, textExtract and Question, start_learning_Queues.
+
+RMQ_venv: Present virtual environment setup.
 
 
 **About files:**
 
+database.py: In the file build connection with db and functions to perform get, put and update operation.
+
 textExtract.py: Present functions to extract text from different kind of files.
 
-receiver.py: Setup RabbitMQ consumer and made API calls to get and post data.
+openai_api.py: Open_api called in this file and get response on request
 
-main.py: Startup file to start application/fastapi.
+Question_Queue.py: Setup RabbitMQ Question consumer and made open_api, and db functon calls to perform get, update operations.
 
-database.py: Made connection with db in file.
-
-knowledgebase.py: Present get and post API's for start_learning_Queue
-
-Question.py: Present get and put API's for Question_Queue.
+Start_Learning_Queue.py: Setup RabbitMQ Start_Learning consumer and made open_api, and db functon calls to perform get, post operations.
 
 ![project_flow.png](project_flow.png)
 
