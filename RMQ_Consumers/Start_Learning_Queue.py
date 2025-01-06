@@ -43,23 +43,20 @@ def main():
 
     def callback(ch, method, properties, body):
         presentation_id = body.decode()
-        print(f"Received {presentation_id}")
-
         files = db_fetch_files(presentation_id)
-        print(files,"===================================================================")
         if "error" in files:
             print(files["error"])
             return
 
         files_content = prepare_content(files)
 
-        # topics = open_api_get_topics(files_content)
+        topics = open_api_get_topics(files_content)
         topics = {
-                  "presenter_id": "1",
-                  "presentation_id": "1",
+                  "presenter_id": "2",
+                  "presentation_id": presentation_id,
                   "title": "Introduction to Machine Learning",
                   "summary": "This topic covers the basics of machine learning, including supervised and unsupervised learning techniques.",
-                  "open_ai_request_completion_id": "cmpl-7eWMTmLqeFr95"
+                  "request_completion_id": "cmpl-7eWMTmLqeFr95"
         }
 
         save_result = db_save_topics(topics, presentation_id)

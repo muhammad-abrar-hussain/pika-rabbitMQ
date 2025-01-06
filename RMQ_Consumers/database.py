@@ -1,5 +1,6 @@
 from sqlalchemy import create_engine, MetaData, text
 from sqlalchemy.sql import text
+from datetime import datetime
 
 DATABASE_URL = "mysql+pymysql://root:123456@localhost:3306/qtip"
 
@@ -44,28 +45,33 @@ def db_fetch_files(presentation_id):
         return {"error": str(e)}
 
 
+
+
 def db_save_topics(topic, presentation_id):
     """
-    Save AI-generated topics into the database.
+    Save AI-generated topics into the database with timestamps.
 
     Args:
-        topic (dict): Dictionary containing topic details (presenter_id, title, summary, open_ai_request_completion_id).
+        topic (dict): Dictionary containing topic details (presenter_id, title, summary, request_completion_id).
         presentation_id (str): The ID of the presentation to associate with the topic.
 
     Returns:
         dict: Response message indicating success or error.
     """
     try:
+        current_time = datetime.utcnow()  # Use UTC for consistency
         with engine.begin() as conn:
             query = text("""
                 INSERT INTO ai_generated_topics
-                (id, presenter_id, presentation_id, title, summary, open_ai_request_completion_id)
+                (presenter_id, presentation_id, title, summary, request_completion_id, created_at, updated_at)
                 VALUES (
                     :presenter_id,
                     :presentation_id,
                     :title,
                     :summary,
-                    :open_ai_request_completion_id
+                    :request_completion_id,
+                    :created_at,
+                    :updated_at
                 )
             """)
             conn.execute(query, {
@@ -73,12 +79,16 @@ def db_save_topics(topic, presentation_id):
                 "presentation_id": presentation_id,
                 "title": topic["title"],
                 "summary": topic["summary"],
-                "open_ai_request_completion_id": topic["open_ai_request_completion_id"],
+                "request_completion_id": topic["request_completion_id"],
+                "created_at": current_time,
+                "updated_at": current_time,
             })
 
             return {"message": "AI-generated topic successfully created."}
     except Exception as e:
         return {"error": str(e)}
+
+
 
 def db_fetch_question(question_id: int):
     """
