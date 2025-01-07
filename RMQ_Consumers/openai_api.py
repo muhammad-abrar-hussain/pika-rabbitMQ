@@ -1,46 +1,6 @@
-# import os
-# import openai
-# from dotenv import load_dotenv
-#
-# load_dotenv()
-#
-# openai.api_key = os.getenv("OPENAI_API_KEY")
-#
-#
-# def open_api_get_topics(file_content):
-#     messages = [
-#         {"role": "system", "content": "You are a helpful assistant."},
-#         {"role": "user", "content": f"""
-#                 Extract the main topics from the following content and summarize them.
-#                 Each topic should have a title and a brief summary:
-#
-#                 {file_content}
-#
-#                 Format the response as a JSON array of objects with 'title' and 'summary' keys.
-#
-#                 Later, I will ask questions related to the content or topics. Your task is to assess the validity of each question.
-#                 If the question is valid, respond with "yes"; otherwise, respond with "no."
-#                 If the question is valid, also include the relevant topic title to which the question pertains.
-#                 The output should always be in JSON format only, without any additional explanations.
-#             """}
-#     ]
-#     print("messages", messages)
-#     try:
-#         response = openai.ChatCompletion.create(
-#             model="gpt-4",
-#             messages=messages
-#         )
-#
-#         print("response", response)
-#         return response['choices'][0]['message']['content']
-#
-#     except Exception as e:
-#         print(f"Error during OpenAI API request: {e}")
-#         return None
-
-
 import os
 import openai
+import json
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
@@ -81,7 +41,6 @@ def split_into_chunks(text, max_tokens):
 
 def open_api_get_topics(file_content):
     # Split content into manageable chunks
-    print(file_content,"++++++++++++++++++++++++++++++++++++++++")
     chunks = split_into_chunks(file_content, MAX_TOKENS)
     topics = []
 
@@ -99,19 +58,17 @@ def open_api_get_topics(file_content):
 
                 Format the response as a JSON array of objects with 'title' and 'summary' keys.
 
-                Later, I will ask questions related to the content or topics. Your task is to assess the validity of each question. 
-                If the question is valid, respond with "yes"; otherwise, respond with "no." 
+                I will ask questions related to the content or topics. Your task is to assess the validity of each question. 
+                If the question is valid, respond with "1"; otherwise, respond with "0." 
                 If the question is valid, also include the relevant topic title to which the question pertains. 
                 The output should always be in JSON format only, without any additional explanations.
             """}
         ]
-        print("messages:",messages)
         try:
             response = openai.ChatCompletion.create(
                 model="gpt-4",
                 messages=messages
             )
-            print("response:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::",response)
             result = response['choices'][0]['message']['content']
 
             data = {
@@ -124,6 +81,33 @@ def open_api_get_topics(file_content):
             print(f"Error during OpenAI API request: {e}")
             return None
 
-    # Combine all chunk results into one
     return topics
 
+
+def open_api_get_question_relevancy(question, topics):
+    """
+    Assess the relevance of a question to the provided topics.
+    """
+    messages = [
+        {"role": "system", "content": "You are a helpful assistant."},
+        {"role": "user", "content": f"""
+            I will ask questions related to the content or topics. Your task is to assess the validity of each question. 
+            If the question is valid, respond with "True"; otherwise, respond with "False." 
+            If the question is valid, also include the relevant topic title to which the question pertains. 
+            The output should always be in JSON format only, without any additional explanations.
+
+            Question: {question}
+            Topics: {topics}
+        """}
+    ]
+    try:
+        response = openai.ChatCompletion.create(
+            model="gpt-4",
+            messages=messages
+        )
+        result = response['choices'][0]['message']['content']
+        return json.loads(result)
+
+    except Exception as e:
+        print(f"Error during OpenAI API request: {e}")
+        return None

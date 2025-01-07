@@ -1,6 +1,7 @@
 from sqlalchemy import create_engine, MetaData
 from sqlalchemy.sql import text
 from datetime import datetime
+
 DATABASE_URL = "mysql+pymysql://root:123456@localhost:3306/qtip"
 
 # Create a synchronous engine
@@ -42,12 +43,6 @@ def db_fetch_files(presentation_id):
 
     except Exception as e:
         return {"error": str(e)}
-
-
-
-
-from datetime import datetime
-from sqlalchemy import text
 
 def db_save_topics(topic, presentation_id):
     """
@@ -191,17 +186,17 @@ def db_fetch_question(question_id: int):
             if not result:
                 raise Exception("No Question found for the given Question ID.")
 
-            # Return the fetched question as a dictionary
-            return {"question": result[0]}
+            return result[0]
     except Exception as e:
         raise Exception(f"Database error: {e}")
 
-def db_save_question_detail(topic_id: int, is_relevant: bool, question_id: int):
+def db_save_question_detail(topic_id: int = None, is_relevant: bool = False, question_id: int = None):
     """
     Update the `topic_id` and `is_relevant` fields of a question in the database.
+    If `topic_id` is not provided, it will use the default value from the database.
 
     Args:
-        topic_id (int): The AI-assigned topic ID for the question.
+        topic_id (int, optional): The AI-assigned topic ID for the question. Defaults to None.
         is_relevant (bool): Whether the question is deemed relevant by the AI.
         question_id (int): The ID of the question to update.
 
@@ -212,6 +207,10 @@ def db_save_question_detail(topic_id: int, is_relevant: bool, question_id: int):
         Exception: If an error occurs during the update.
     """
     try:
+        # Default value for topic_id if not provided
+        if topic_id is None:
+            topic_id = 0  # Replace with the default value from your database, if needed
+
         with engine.begin() as conn:  # Start a transaction and commit automatically
             query = text("""
                 UPDATE original_questions
@@ -236,3 +235,74 @@ def db_save_question_detail(topic_id: int, is_relevant: bool, question_id: int):
     except Exception as e:
         raise Exception(f"Database error: {e}")
 
+
+def get_topics_with_summary(question_id: int):
+    """
+    Fetch presentation ID corresponding to the question ID, and retrieve AI-generated topics
+    (titles and summaries) for the given presentation.
+
+    Args:
+        question_id (int): The ID of the question.
+
+    Returns:
+        dict: JSON-formatted response containing presentation ID and a list of topics.
+    """
+    try:
+        with engine.connect() as conn:
+            query_presentation_id = text("""
+                SELECT presentation_id
+                FROM original_questions
+                WHERE id = :question_id
+            """)
+            result = conn.execute(query_presentation_id, {"question_id": question_id}).fetchone()
+
+            if not result:
+                return {"error": "No question found with the given ID."}
+
+            presentation_id = result[0]
+
+            query_topics = text("""
+                SELECT title, summary
+                FROM ai_generated_topics
+                WHERE presentation_id = :presentation_id
+            """)
+            topics = conn.execute(query_topics, {"presentation_id": presentation_id}).fetchall()
+            if not topics:
+                return {"error": "No topics found for the given presentation ID."}
+
+            formatted_topics = [{"title": topic[0], "summary": topic[1]} for topic in topics]
+
+            return formatted_topics
+
+    except Exception as e:
+        return {"error": str(e)}
+
+def find_topic_id_from_db(topic: str):
+    """
+    Find the topic ID for a given topic title from the ai_generated_topics table.
+
+    Args:
+        topic (str): The title of the topic to search for.
+
+    Returns:
+        int: The topic ID if found.
+
+    Raises:
+        Exception: If the topic is not found or a database error occurs.
+    """
+    try:
+        with engine.connect() as conn:
+            query = text("""
+                SELECT id
+                FROM ai_generated_topics
+                WHERE title = :topic
+            """)
+
+            result = conn.execute(query, {"topic": topic}).fetchone()
+
+            if not result:
+                raise Exception(f"No topic found with the title '{topic}'.")
+
+            return result[0]
+    except Exception as e:
+        raise Exception(f"Database error: {e}")

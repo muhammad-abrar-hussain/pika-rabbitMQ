@@ -5,8 +5,8 @@ import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), 'packages'))
 
 import pika
-from database import db_fetch_question, db_save_question_detail
-
+from database import db_fetch_question, db_save_question_detail, get_topics_with_summary, find_topic_id_from_db
+from openai_api import open_api_get_question_relevancy
 
 RABBITMQ_HOST = 'localhost'
 QUESTION_QUEUE = 'question_Queue'
@@ -28,13 +28,36 @@ def main():
 
         try:
             question = db_fetch_question(question_id)
-            # question_detail = open_api_get_relevancy(files_content)
-            question_detail = {
-                        "topic_id": "4",
-                        "is_relevant": False
-                        }
-            save_result = db_save_question_detail(question_detail["topic_id"],question_detail["is_relevant"], question_id)
-            print(save_result)
+            topics_by_ai = get_topics_with_summary(question_id)
+
+            question_detail = open_api_get_question_relevancy(question, topics_by_ai)
+            if question_detail:
+                # Extract values
+                is_valid = question_detail.get("valid")
+                relevant_topic = question_detail.get("topic")
+
+                print(f"Is Valid: {is_valid}")
+                print(f"Relevant Topic: {relevant_topic}")
+
+                if relevant_topic is not None:
+                    topic_id = find_topic_id_from_db(relevant_topic)
+                    question_detail = {
+                                "topic_id": topic_id,
+                                "is_relevant": 1 if is_valid else 0,
+                            }
+
+                    save_result = db_save_question_detail(question_detail["topic_id"], question_detail["is_relevant"],question_id)
+                    print(save_result)
+                else:
+                    question_detail = {
+                        "topic_id": 0,
+                        "is_relevant": 1 if is_valid else 0,
+                    }
+                    save_result = db_save_question_detail(question_detail["topic_id"],question_detail["is_relevant"], question_id)
+                    print(save_result)
+            else:
+                print("Failed to fetch question relevancy.")
+
         except Exception as e:
             print(f"Error processing question {question_id}: {e}")
         finally:
