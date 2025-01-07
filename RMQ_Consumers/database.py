@@ -1,7 +1,6 @@
-from sqlalchemy import create_engine, MetaData, text
+from sqlalchemy import create_engine, MetaData
 from sqlalchemy.sql import text
 from datetime import datetime
-
 DATABASE_URL = "mysql+pymysql://root:123456@localhost:3306/qtip"
 
 # Create a synchronous engine
@@ -47,21 +46,40 @@ def db_fetch_files(presentation_id):
 
 
 
+from datetime import datetime
+from sqlalchemy import text
+
 def db_save_topics(topic, presentation_id):
     """
     Save AI-generated topics into the database with timestamps.
 
     Args:
-        topic (dict): Dictionary containing topic details (presenter_id, title, summary, request_completion_id).
+        topic (dict): Dictionary containing topic details (title, summary, request_completion_id).
         presentation_id (str): The ID of the presentation to associate with the topic.
 
     Returns:
         dict: Response message indicating success or error.
     """
     try:
+        # Get the current time for created_at and updated_at
         current_time = datetime.utcnow()  # Use UTC for consistency
+
+        # Fetch the presenter_id from the presentations table based on the presentation_id
         with engine.begin() as conn:
             query = text("""
+                SELECT presenter_id
+                FROM presentations
+                WHERE id = :presentation_id
+            """)
+            result = conn.execute(query, {"presentation_id": presentation_id}).fetchone()
+
+            # Check if the presenter_id was found
+            if result is None:
+                return {"error": f"No presenter found for presentation_id: {presentation_id}"}
+            presenter_id = result["presenter_id"]
+
+            # Insert the topic into ai_generated_topics table
+            insert_query = text("""
                 INSERT INTO ai_generated_topics
                 (presenter_id, presentation_id, title, summary, request_completion_id, created_at, updated_at)
                 VALUES (
@@ -74,8 +92,8 @@ def db_save_topics(topic, presentation_id):
                     :updated_at
                 )
             """)
-            conn.execute(query, {
-                "presenter_id": topic["presenter_id"],
+            conn.execute(insert_query, {
+                "presenter_id": presenter_id,
                 "presentation_id": presentation_id,
                 "title": topic["title"],
                 "summary": topic["summary"],
@@ -87,6 +105,62 @@ def db_save_topics(topic, presentation_id):
             return {"message": "AI-generated topic successfully created."}
     except Exception as e:
         return {"error": str(e)}
+
+
+def db_save_topics(topic, presentation_id):
+    """
+    Save AI-generated topics into the database with timestamps.
+
+    Args:
+        topic (dict): Dictionary containing topic details (title, summary, request_completion_id).
+        presentation_id (str): The ID of the presentation to associate with the topic.
+
+    Returns:
+        dict: Response message indicating success or error.
+    """
+    try:
+
+        current_time = datetime.utcnow()
+
+        with engine.begin() as conn:
+            query = text("""
+                SELECT presenter_id
+                FROM presentations
+                WHERE id = :presentation_id
+            """)
+            result = conn.execute(query, {"presentation_id": presentation_id}).fetchone()
+
+            if result is None:
+                return {"error": f"No presenter found for presentation_id: {presentation_id}"}
+            presenter_id = result[0]
+
+            insert_query = text("""
+                INSERT INTO ai_generated_topics
+                (presenter_id, presentation_id, title, summary, request_completion_id, created_at, updated_at)
+                VALUES (
+                    :presenter_id,
+                    :presentation_id,
+                    :title,
+                    :summary,
+                    :request_completion_id,
+                    :created_at,
+                    :updated_at
+                )
+            """)
+            conn.execute(insert_query, {
+                "presenter_id": presenter_id,
+                "presentation_id": presentation_id,
+                "title": topic["title"],
+                "summary": topic["summary"],
+                "request_completion_id": topic["request_completion_id"],
+                "created_at": current_time,
+                "updated_at": current_time,
+            })
+
+            return {"message": "AI-generated topic successfully created."}
+    except Exception as e:
+        return {"error": str(e)}
+
 
 
 

@@ -99,7 +99,7 @@ def extract_text_from_docx(file_path):
         """
 
     doc = Document(file_path)
-    return "\n".join([paragraph.text for paragraph in doc.paragraphs])
+    return " ".join([paragraph.text for paragraph in doc.paragraphs])
 
 
 def extract_text_from_odp(file_path):
@@ -134,7 +134,7 @@ def extract_text_from_odp(file_path):
             if paragraph_text.strip():  # Avoid adding empty lines
                 text.append(paragraph_text)
 
-        return "\n".join(text)
+        return " ".join(text)
     except Exception as e:
         return f"Error reading ODP file: {e}"
 
